@@ -1,0 +1,136 @@
+// Serum Backend Candid Interface Declaration
+// This file describes the public API of the Serum EHR backend canister
+
+type DID = record {
+    method : text;
+    identifier : text;
+    createdAt : int;
+};
+
+type PatientProfile = record {
+    did : DID;
+    name : text;
+    dateOfBirth : text;
+    bloodType : opt text;
+    allergies : vec text;
+    createdAt : int;
+    updatedAt : int;
+};
+
+type RecordType = variant {
+    Diagnosis;
+    Prescription;
+    LabResult;
+    Imaging;
+    Procedure;
+    Vaccination;
+    Allergy;
+    VitalSigns;
+    Other;
+};
+
+type RecordMetadata = record {
+    title : text;
+    provider : text;
+    facility : opt text;
+    dateOfService : text;
+    tags : vec text;
+};
+
+type MedicalRecord = record {
+    id : nat;
+    patientDid : text;
+    recordType : RecordType;
+    encryptedData : blob;
+    encryptionKeyHash : text;
+    metadata : RecordMetadata;
+    createdAt : int;
+    updatedAt : int;
+};
+
+type Permission = variant {
+    Read;
+    Write;
+    Delete;
+};
+
+type AccessGrant = record {
+    grantedTo : principal;
+    grantedBy : text;
+    recordIds : vec nat;
+    expiresAt : opt int;
+    permissions : vec Permission;
+    createdAt : int;
+};
+
+type Error = variant {
+    NotAuthenticated;
+    Unauthorized;
+    NotFound;
+    AlreadyExists;
+    InvalidInput;
+    InternalError;
+};
+
+type Result_DID = variant {
+    ok : DID;
+    err : Error;
+};
+
+type Result_PatientProfile = variant {
+    ok : PatientProfile;
+    err : Error;
+};
+
+type Result_MedicalRecord = variant {
+    ok : MedicalRecord;
+    err : Error;
+};
+
+type Result_MedicalRecords = variant {
+    ok : vec MedicalRecord;
+    err : Error;
+};
+
+type Result_AccessGrant = variant {
+    ok : AccessGrant;
+    err : Error;
+};
+
+type Result_AccessGrants = variant {
+    ok : vec AccessGrant;
+    err : Error;
+};
+
+type Result_Unit = variant {
+    ok;
+    err : Error;
+};
+
+service : {
+    // DID Management
+    createDID : () -> (Result_DID);
+    getMyDID : () -> (Result_DID);
+    resolveDID : (text) -> (Result_DID) query;
+
+    // Patient Profile
+    createOrUpdateProfile : (text, text, opt text, vec text) -> (Result_PatientProfile);
+    getMyProfile : () -> (Result_PatientProfile);
+
+    // Medical Records
+    addMedicalRecord : (RecordType, blob, text, RecordMetadata) -> (Result_MedicalRecord);
+    getMedicalRecord : (nat) -> (Result_MedicalRecord);
+    getMyMedicalRecords : () -> (Result_MedicalRecords);
+    updateMedicalRecord : (nat, blob, text, RecordMetadata) -> (Result_MedicalRecord);
+    deleteMedicalRecord : (nat) -> (Result_Unit);
+
+    // Access Control
+    grantAccess : (principal, vec nat, vec Permission, opt int) -> (Result_AccessGrant);
+    revokeAccess : (principal) -> (Result_Unit);
+    getMyAccessGrants : () -> (Result_AccessGrants);
+    getAccessibleRecords : () -> (Result_MedicalRecords);
+
+    // Statistics
+    getTotalPatients : () -> (nat) query;
+    getTotalRecords : () -> (nat) query;
+}
