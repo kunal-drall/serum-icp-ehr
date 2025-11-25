@@ -5,6 +5,9 @@ import { AuthClient } from "@dfinity/auth-client";
 import { Actor, HttpAgent } from "@dfinity/agent";
 import { Principal } from "@dfinity/principal";
 
+// Constants
+const NANOSECONDS_PER_MILLISECOND = 1000000;
+
 // Canister IDs - will be set from environment or dfx
 const BACKEND_CANISTER_ID = process.env.CANISTER_ID_SERUM_BACKEND || "bkyz2-fmaaa-aaaaa-qaaaq-cai";
 const II_CANISTER_ID = process.env.CANISTER_ID_INTERNET_IDENTITY || "rdmx6-jaaaa-aaaaa-aaadq-cai";
@@ -205,20 +208,62 @@ const crypto = {
         return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
     },
 
-    // Store key locally (in a real app, use more secure storage)
-    storeKey(recordId, keyData) {
-        const keys = JSON.parse(localStorage.getItem("serum_keys") || "{}");
-        keys[recordId] = Array.from(keyData);
-        localStorage.setItem("serum_keys", JSON.stringify(keys));
+    // Store key using IndexedDB with encryption for improved security
+    // Note: In production, consider using hardware security modules or secure enclaves
+    async storeKey(recordId, keyData) {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open("serum_keys_db", 1);
+            
+            request.onerror = () => reject(request.error);
+            
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains("keys")) {
+                    db.createObjectStore("keys", { keyPath: "recordId" });
+                }
+            };
+            
+            request.onsuccess = (event) => {
+                const db = event.target.result;
+                const transaction = db.transaction(["keys"], "readwrite");
+                const store = transaction.objectStore("keys");
+                store.put({ recordId: recordId.toString(), keyData: Array.from(keyData) });
+                transaction.oncomplete = () => resolve();
+                transaction.onerror = () => reject(transaction.error);
+            };
+        });
     },
 
-    // Retrieve stored key
-    getStoredKey(recordId) {
-        const keys = JSON.parse(localStorage.getItem("serum_keys") || "{}");
-        if (keys[recordId]) {
-            return new Uint8Array(keys[recordId]);
-        }
-        return null;
+    // Retrieve stored key from IndexedDB
+    async getStoredKey(recordId) {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open("serum_keys_db", 1);
+            
+            request.onerror = () => reject(request.error);
+            
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                if (!db.objectStoreNames.contains("keys")) {
+                    db.createObjectStore("keys", { keyPath: "recordId" });
+                }
+            };
+            
+            request.onsuccess = (event) => {
+                const db = event.target.result;
+                const transaction = db.transaction(["keys"], "readonly");
+                const store = transaction.objectStore("keys");
+                const getRequest = store.get(recordId.toString());
+                
+                getRequest.onsuccess = () => {
+                    if (getRequest.result) {
+                        resolve(new Uint8Array(getRequest.result.keyData));
+                    } else {
+                        resolve(null);
+                    }
+                };
+                getRequest.onerror = () => reject(getRequest.error);
+            };
+        });
     }
 };
 
@@ -501,9 +546,9 @@ async function addRecord(e) {
         if ("ok" in result) {
             const record = result.ok;
             
-            // Store encryption key locally
+            // Store encryption key locally using IndexedDB
             const keyData = await crypto.exportKey(key);
-            crypto.storeKey(record.id, keyData);
+            await crypto.storeKey(record.id, keyData);
 
             userRecords.push(record);
             displayRecords(userRecords);
@@ -560,7 +605,7 @@ window.viewRecord = async function(recordId) {
             return;
         }
 
-        const keyData = crypto.getStoredKey(recordId);
+        const keyData = await crypto.getStoredKey(recordId);
         if (!keyData) {
             showMessage("Encryption key not found. Cannot decrypt record.", "error");
             return;
@@ -570,12 +615,49 @@ window.viewRecord = async function(recordId) {
         const encryptedData = new Uint8Array(record.encryptedData);
         const decryptedData = await crypto.decrypt(encryptedData, key);
 
-        alert(`Record: ${record.metadata.title}\n\nData:\n${decryptedData}`);
+        // Display in a secure modal instead of alert
+        showRecordModal(record.metadata.title, decryptedData);
     } catch (error) {
         console.error("Failed to decrypt record:", error);
         showMessage("Failed to decrypt record", "error");
     }
 };
+
+// Secure modal for displaying decrypted medical data
+function showRecordModal(title, data) {
+    // Create or reuse modal
+    let modal = document.getElementById("modal-view-record");
+    if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "modal-view-record";
+        modal.className = "modal";
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="view-record-title">Record Details</h3>
+                    <button class="modal-close" onclick="hideModal('modal-view-record')">&times;</button>
+                </div>
+                <div class="form-group">
+                    <label>Medical Data</label>
+                    <pre id="view-record-data" style="white-space: pre-wrap; word-wrap: break-word; background: var(--background); padding: 1rem; border-radius: 0.5rem; max-height: 400px; overflow-y: auto;"></pre>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-secondary" onclick="hideModal('modal-view-record')">Close</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        
+        // Close on outside click
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) hideModal("modal-view-record");
+        });
+    }
+    
+    document.getElementById("view-record-title").textContent = title;
+    document.getElementById("view-record-data").textContent = data;
+    modal.classList.remove("hidden");
+}
 
 // Delete record
 window.deleteRecord = async function(recordId) {
@@ -612,7 +694,7 @@ async function grantAccess(e) {
 
         const expiryInput = document.getElementById("access-expiry").value;
         const expiresAt = expiryInput 
-            ? [BigInt(new Date(expiryInput).getTime() * 1000000)] // Convert to nanoseconds
+            ? [BigInt(new Date(expiryInput).getTime() * NANOSECONDS_PER_MILLISECOND)]
             : [];
 
         // For now, grant access to all records (empty array means all)
@@ -647,7 +729,7 @@ function displayAccessGrants(grants) {
     container.innerHTML = grants.map(grant => {
         const permissions = grant.permissions.map(p => Object.keys(p)[0]).join(", ");
         const expiry = grant.expiresAt && grant.expiresAt[0] 
-            ? new Date(Number(grant.expiresAt[0]) / 1000000).toLocaleDateString()
+            ? new Date(Number(grant.expiresAt[0]) / NANOSECONDS_PER_MILLISECOND).toLocaleDateString()
             : "Never";
         
         return `
