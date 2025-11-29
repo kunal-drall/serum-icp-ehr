@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Serum - Decentralized EHR</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <div class="logo">
+                <h1>🏥 Serum</h1>
+                <span class="tagline">Patient-Owned Health Records on ICP</span>
+            </div>
+            <nav id="nav-auth">
+                <button id="btn-login" class="btn btn-primary">Login with Internet Identity</button>
+                <div id="user-info" class="hidden">
+                    <span id="user-principal"></span>
+                    <button id="btn-logout" class="btn btn-secondary">Logout</button>
+                </div>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Landing Section (Not Authenticated) -->
+            <section id="section-landing" class="section">
+                <div class="hero">
+                    <h2>Your Health Data, Your Control</h2>
+                    <p>Serum leverages Internet Identity's verifiable credentials and privacy-preserving architecture to create a patient-owned, decentralized Electronic Health Record system.</p>
+                    
+                    <div class="features">
+                        <div class="feature-card">
+                            <div class="feature-icon">🔐</div>
+                            <h3>Decentralized Identity</h3>
+                            <p>Each patient has a unique DID (Decentralized Identifier) derived from Internet Identity, ensuring privacy and ownership.</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🔒</div>
+                            <h3>Encrypted Storage</h3>
+                            <p>Medical records are encrypted and stored in patient-controlled canisters on the Internet Computer.</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">🤝</div>
+                            <h3>Selective Sharing</h3>
+                            <p>Grant temporary access to healthcare providers with fine-grained permissions that you control.</p>
+                        </div>
+                    </div>
+
+                    <button id="btn-get-started" class="btn btn-large btn-primary">Get Started</button>
+                </div>
+            </section>
+
+            <!-- Dashboard Section (Authenticated) -->
+            <section id="section-dashboard" class="section hidden">
+                <div class="dashboard">
+                    <!-- DID Card -->
+                    <div class="card did-card">
+                        <h3>Your Decentralized Identity</h3>
+                        <div id="did-display" class="did-display">
+                            <span class="did-label">DID:</span>
+                            <code id="did-value">Loading...</code>
+                        </div>
+                        <button id="btn-create-did" class="btn btn-primary hidden">Create DID</button>
+                    </div>
+
+                    <!-- Profile Card -->
+                    <div class="card profile-card">
+                        <h3>Patient Profile</h3>
+                        <form id="profile-form">
+                            <div class="form-group">
+                                <label for="profile-name">Full Name</label>
+                                <input type="text" id="profile-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-dob">Date of Birth</label>
+                                <input type="date" id="profile-dob" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-blood">Blood Type</label>
+                                <select id="profile-blood">
+                                    <option value="">Select...</option>
+                                    <option value="A+">A+</option>
+                                    <option value="A-">A-</option>
+                                    <option value="B+">B+</option>
+                                    <option value="B-">B-</option>
+                                    <option value="AB+">AB+</option>
+                                    <option value="AB-">AB-</option>
+                                    <option value="O+">O+</option>
+                                    <option value="O-">O-</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="profile-allergies">Allergies (comma-separated)</label>
+                                <input type="text" id="profile-allergies" placeholder="e.g., Penicillin, Peanuts">
+                            </div>
+                            <button type="submit" class="btn btn-primary">Save Profile</button>
+                        </form>
+                    </div>
+
+                    <!-- Medical Records Section -->
+                    <div class="card records-card">
+                        <div class="card-header">
+                            <h3>Medical Records</h3>
+                            <button id="btn-add-record" class="btn btn-primary">+ Add Record</button>
+                        </div>
+                        <div id="records-list" class="records-list">
+                            <p class="empty-state">No medical records yet. Add your first record.</p>
+                        </div>
+                    </div>
+
+                    <!-- Access Grants Section -->
+                    <div class="card access-card">
+                        <div class="card-header">
+                            <h3>Access Grants</h3>
+                            <button id="btn-grant-access" class="btn btn-secondary">+ Grant Access</button>
+                        </div>
+                        <div id="access-list" class="access-list">
+                            <p class="empty-state">No access grants yet. Share your records securely with healthcare providers.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Add Record Modal -->
+        <div id="modal-add-record" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Add Medical Record</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <form id="record-form">
+                    <div class="form-group">
+                        <label for="record-type">Record Type</label>
+                        <select id="record-type" required>
+                            <option value="Diagnosis">Diagnosis</option>
+                            <option value="Prescription">Prescription</option>
+                            <option value="LabResult">Lab Result</option>
+                            <option value="Imaging">Imaging</option>
+                            <option value="Procedure">Procedure</option>
+                            <option value="Vaccination">Vaccination</option>
+                            <option value="Allergy">Allergy</option>
+                            <option value="VitalSigns">Vital Signs</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="record-title">Title</label>
+                        <input type="text" id="record-title" required placeholder="e.g., Annual Checkup Results">
+                    </div>
+                    <div class="form-group">
+                        <label for="record-provider">Healthcare Provider</label>
+                        <input type="text" id="record-provider" required placeholder="e.g., Dr. Smith">
+                    </div>
+                    <div class="form-group">
+                        <label for="record-facility">Facility (Optional)</label>
+                        <input type="text" id="record-facility" placeholder="e.g., City General Hospital">
+                    </div>
+                    <div class="form-group">
+                        <label for="record-date">Date of Service</label>
+                        <input type="date" id="record-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="record-data">Medical Data (will be encrypted)</label>
+                        <textarea id="record-data" required placeholder="Enter medical information..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="record-tags">Tags (comma-separated)</label>
+                        <input type="text" id="record-tags" placeholder="e.g., cardiology, annual">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add Record</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Grant Access Modal -->
+        <div id="modal-grant-access" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Grant Access to Provider</h3>
+                    <button class="modal-close">&times;</button>
+                </div>
+                <form id="access-form">
+                    <div class="form-group">
+                        <label for="access-principal">Provider Principal ID</label>
+                        <input type="text" id="access-principal" required placeholder="Enter provider's principal ID">
+                    </div>
+                    <div class="form-group">
+                        <label>Permissions</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" name="permission" value="Read" checked> Read</label>
+                            <label><input type="checkbox" name="permission" value="Write"> Write</label>
+                            <label><input type="checkbox" name="permission" value="Delete"> Delete</label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="access-expiry">Expires (Optional)</label>
+                        <input type="datetime-local" id="access-expiry">
+                    </div>
+                    <div class="form-group">
+                        <label>Records to Share</label>
+                        <div id="records-checkbox-list" class="checkbox-group">
+                            <label><input type="checkbox" name="record" value="all" checked> All Records</label>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary modal-cancel">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Grant Access</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <footer>
+            <p>Serum - Decentralized EHR on the Internet Computer</p>
+            <p>Powered by Internet Identity</p>
+        </footer>
+    </div>
+
+    <script type="module" src="index.js"></script>
+</body>
+</html>

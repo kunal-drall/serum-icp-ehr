@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+.dfx/
+dist/
+target/
+
+# Environment files
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Package manager locks (optional - include if you want consistency)
+# package-lock.json
+
+# Webpack
+*.hot-update.json
+*.hot-update.js

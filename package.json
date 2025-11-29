@@ -1,0 +1,33 @@
+{
+  "name": "serum-icp-ehr",
+  "version": "1.0.0",
+  "description": "Serum - Decentralized Electronic Health Records on Internet Computer",
+  "main": "src/serum_frontend/src/index.js",
+  "scripts": {
+    "build": "echo 'Build requires dfx SDK'",
+    "test": "echo 'Tests require dfx SDK'",
+    "start": "echo 'Start requires dfx SDK'"
+  },
+  "keywords": [
+    "icp",
+    "internet-computer",
+    "ehr",
+    "healthcare",
+    "decentralized",
+    "blockchain"
+  ],
+  "author": "Kunal",
+  "license": "MIT",
+  "dependencies": {
+    "@dfinity/agent": "^1.0.0",
+    "@dfinity/auth-client": "^1.0.0",
+    "@dfinity/candid": "^1.0.0",
+    "@dfinity/principal": "^1.0.0"
+  },
+  "devDependencies": {
+    "webpack": "^5.88.0",
+    "webpack-cli": "^5.1.4",
+    "html-webpack-plugin": "^5.5.3",
+    "copy-webpack-plugin": "^11.0.0"
+  }
+}
